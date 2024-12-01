@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Tipon Trading Signals</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Admin Dashboard</h2>
+        
+        <div class="card mt-4">
+            <div class="card-header">User Registrations</div>
+            <div class="card-body">
+                <table class="table" id="userRegistrationsTable">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userRegistrationsList">
+                        <!-- Users will be dynamically populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="userStatsContainer" class="mt-4">
+            <!-- User trading statistics will be dynamically populated here -->
+        </div>
+
+        <a href="index.html" class="btn btn-secondary mt-3">Back to Home</a>
+    </div>
+    <script>
+       document.addEventListener('DOMContentLoaded', function () {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    const logoutButton = document.getElementById('logoutButton');
+
+    // Verify user is logged in with proper access
+    if (!currentUser || (currentUser.status !== 'approved' && !currentUser.isAdmin)) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Add verification mark to username
+    const usernameElement = document.createElement('span');
+    usernameElement.innerHTML = `
+        ${currentUser.username} 
+        ${currentUser.verified ? '✅' : ''}
+    `;
+    document.querySelector('.navbar .logo').appendChild(usernameElement);
+
+    // If user is admin, add link to admin dashboard
+    if (currentUser.isAdmin) {
+        const adminLink = document.createElement('li');
+        adminLink.innerHTML = '<a href="admin.html">Admin Dashboard</a>';
+        document.querySelector('.navbar ul').appendChild(adminLink);
+    }
+
+    const form = document.getElementById('analyzerForm');
+    const totalSignalsEl = document.getElementById('totalSignals');
+    const successfulSignalsEl = document.getElementById('successfulSignals');
+    const failedSignalsEl = document.getElementById('failedSignals');
+    const successRateEl = document.getElementById('successRate');
+    const signalsContainer = document.getElementById('signalsContainer');
+    const signalHistoryTable = document.querySelector('.table-responsive table');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const errorAlert = document.getElementById('errorAlert');
+
+    // Disable signal generation if user is not approved
+    if (currentUser.status !== 'approved' && !currentUser.isAdmin) {
+        form.innerHTML = '<div class="alert alert-warning">You are not authorized to generate signals.</div>';
+        return;
+    }
+
+    // Initialize or retrieve user's trading stats
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.email === currentUser.email);
+    
+    let userStats = {
+        totalSignals: 0,
+        successfulSignals: 0,
+        failedSignals: 0,
+        signalHistory: []
+    };
+
+    if (userIndex !== -1 && users[userIndex].tradingStats) {
+        userStats = users[userIndex].tradingStats;
+
+        // Update UI with existing stats
+        totalSignalsEl.textContent = userStats.totalSignals;
+        successfulSignalsEl.textContent = userStats.successfulSignals;
+        failedSignalsEl.textContent = userStats.failedSignals;
+        successRateEl.textContent = `${((userStats.successfulSignals / (userStats.totalSignals || 1)) * 100).toFixed(2)}%`;
+
+        // Populate signal history
+        updateSignalHistoryTable(userStats.signalHistory);
+    }
+
+    // Admin functionality to view individual user statistics
+    if (currentUser.isAdmin) {
+        const userStatsContainer = document.getElementById('userStatsContainer');
+        
+        function displayUserStatistics() {
+            userStatsContainer.innerHTML = ''; // Clear previous content
+            
+            users.forEach(user => {
+                if (user.tradingStats) {
+                    const userStatCard = document.createElement('div');
+                    userStatCard.classList.add('card', 'mb-3', 'user-stat-card');
+                    userStatCard.innerHTML = `
+                        <div class="card-header">
+                            ${user.username} (${user.email})
+                        </div>
+                        <div class="card-body">
+                            <p>Total Signals: ${user.tradingStats.totalSignals}</p>
+                            <p>Successful Signals: ${user.tradingStats.successfulSignals}</p>
+                            <p>Failed Signals: ${user.tradingStats.failedSignals}</p>
+                            <p>Success Rate: ${user.tradingStats.successRate}%</p>
+                            <button class="btn btn-primary view-user-history" data-email="${user.email}">
+                                View Signal History
+                            </button>
+                        </div>
+                    `;
+                    userStatsContainer.appendChild(userStatCard);
+                }
+            });
+
+            // Add event listeners for viewing individual user histories
+            const viewHistoryButtons = document.querySelectorAll('.view-user-history');
+            viewHistoryButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const userEmail = this.getAttribute('data-email');
+                    const user = users.find(u => u.email === userEmail);
+                    
+                    if (user && user.tradingStats) {
+                        updateSignalHistoryTable(user.tradingStats.signalHistory);
+                    }
+                });
+            });
+        }
+
+        // Call this function if on admin page
+        if (window.location.pathname.includes('admin.html')) {
+            displayUserStatistics();
+        }
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        loadingIndicator.classList.remove('d-none');
+        signalsContainer.innerHTML = '';
+        errorAlert.classList.add('d-none');
+
+        const brokerLink = document.getElementById('brokerLink').value;
+        const timeframe = document.getElementById('timeframe').value;
+
+        analyzeSignals(brokerLink, timeframe);
+    });
+
+    function updateSignalHistoryTable(signalHistory) {
+        // Clear existing table rows except header
+        const tableBody = signalHistoryTable.querySelector('tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '';
+        } else {
+            const tbody = document.createElement('tbody');
+            signalHistoryTable.appendChild(tbody);
+        }
+
+        signalHistory.forEach(signal => {
+            const row = signalHistoryTable.querySelector('tbody').insertRow();
+            row.innerHTML = `
+                <td>${signal.dateTime}</td>
+                <td>${signal.broker}</td>
+                <td>${signal.asset}</td>
+                <td>${signal.type}</td>
+                <td>${signal.entry}</td>
+                <td>${signal.exit}</td>
+                <td>${signal.profitLoss}</td>
+                <td class="${signal.result === 'Successful' ? 'text-success' : 'text-danger'}">
+                    ${signal.result}
+                </td>
+            `;
+        });
+    }
+
+    function analyzeSignals(brokerLink, timeframe) {
+        // Simulate signal analysis with random results for demonstration
+        const signalsCount = Math.floor(Math.random() * 10) + 5; // Generate between 5 and 15 signals
+        const newSignals = [];
+
+        userStats.totalSignals += signalsCount;
+        totalSignalsEl.textContent = userStats.totalSignals;
+
+        for (let i = 0; i < signalsCount; i++) {
+            const isSuccess = Math.random() > 0.5; // 50% chance of success
+            const signalDiv = document.createElement('div');
+            signalDiv.className = 'signal-card p-3 mb-2';
+
+            const signalData = {
+                dateTime: new Date().toLocaleString(),
+                broker: brokerLink,
+                asset: 'EUR/USD', // Example asset
+                type: isSuccess ? 'Long' : 'Short',
+                entry: (Math.random() * 100).toFixed(2),
+                exit: (Math.random() * 100).toFixed(2),
+                profitLoss: (Math.random() * 50).toFixed(2),
+                result: isSuccess ? 'Successful' : 'Failed'
+            };
+
+            signalDiv.innerHTML = `
+                <strong>Signal #${userStats.totalSignals}</strong><br>
+                Broker: ${signalData.broker}<br>
+                Timeframe: ${timeframe} minutes<br>
+                Result: <span class="${isSuccess ? 'text-success' : 'text-danger'}">${signalData.result}</span>
+            `;
+            signalsContainer.appendChild(signalDiv);
+
+            newSignals.push(signalData);
+
+            if (isSuccess) {
+                userStats.successfulSignals++;
+            } else {
+                userStats.failedSignals++;
+            }
+        }
+
+        // Combine and limit signal history
+        userStats.signalHistory = [...newSignals, ...userStats.signalHistory].slice(0, 50);
+
+        // Update user's trading stats
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const userIndex = users.findIndex(u => u.email === currentUser.email);
+
+        if (userIndex !== -1) {
+            users[userIndex].tradingStats = {
+                ...userStats,
+                successRate: ((userStats.successfulSignals / (userStats.totalSignals || 1)) * 100).toFixed(2)
+            };
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+
+        // Update UI
+        successfulSignalsEl.textContent = userStats.successfulSignals;
+        failedSignalsEl.textContent = userStats.failedSignals;
+        successRateEl.textContent = `${((userStats.successfulSignals / (userStats.totalSignals || 1)) * 100).toFixed(2)}%`;
+        
+        // Update signal history table
+        updateSignalHistoryTable(userStats.signalHistory);
+
+        loadingIndicator.classList.add('d-none');
+    }
+
+    logoutButton.addEventListener('click', function() {
+        localStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+    });
+});
+    </script>
+</body>
+</html>

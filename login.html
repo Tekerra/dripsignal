@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Tipon Trading Signals</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Login</div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </form>
+                        <div id="loginStatus" class="mt-3"></div>
+                        <p class="mt-3">No account? <a href="registration.html">Register here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    const loginStatus = document.getElementById('loginStatus');
+
+    // Predefined admin credentials
+    const ADMIN_EMAIL = 'famousukpe@outlook.com';
+    const ADMIN_PASSWORD = 'diva';
+
+    // Ensure initial users exist in localStorage
+    function initializeUsers() {
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // Add admin user if not exists
+        const adminExists = users.some(u => u.email === ADMIN_EMAIL);
+        if (!adminExists) {
+            users.push({
+                id: Date.now(),
+                username: 'Admin',
+                email: ADMIN_EMAIL,
+                password: ADMIN_PASSWORD,
+                status: 'approved',
+                isAdmin: true,
+                verified: true
+            });
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+    }
+
+    // Initialize users when page loads
+    initializeUsers();
+
+    loginForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        console.log('Attempting login with:', email, password); // Debugging log
+
+        // Check for admin login first
+        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+            console.log('Admin login successful'); // Debugging log
+            localStorage.setItem('currentUser', JSON.stringify({
+                email: ADMIN_EMAIL,
+                username: 'Admin',
+                status: 'approved',
+                isAdmin: true
+            }));
+            window.location.href = 'admin.html';
+            return;
+        }
+
+        // Retrieve users from localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        console.log('Stored users:', users); // Debugging log
+
+        // Find user
+        const user = users.find(u => 
+            u.email.toLowerCase() === email.toLowerCase() && 
+            u.password === password
+        );
+
+        if (!user) {
+            showStatus('Invalid email or password', 'danger');
+            return;
+        }
+
+        console.log('User found:', user); // Debugging log
+
+        if (user.status === 'blocked') {
+            showStatus('Your account is blocked. Please contact admin.', 'danger');
+            return;
+        }
+
+        if (user.status !== 'approved') {
+            showStatus('Account not yet approved. Please wait for admin approval.', 'warning');
+            return;
+        }
+
+        // Ensure user has a trading stats object
+        if (!user.tradingStats) {
+            user.tradingStats = {
+                totalSignals: 0,
+                successfulSignals: 0,
+                failedSignals: 0,
+                successRate: 0
+            };
+        }
+
+        // Update users array with potential new trading stats structure
+        const updatedUsers = users.map(u => 
+            u.email === user.email ? {...u, tradingStats: user.tradingStats} : u
+        );
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+        // Store logged-in user
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Redirect to index
+        window.location.href = 'index.html';
+    });
+
+    function showStatus(message, type) {
+        console.error('Login Error:', message); // Debugging log
+        loginStatus.innerHTML = `
+            <div class="alert alert-${type}" role="alert">
+                ${message}
+            </div>
+        `;
+    }
+});
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
