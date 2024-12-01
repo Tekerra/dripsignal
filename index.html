@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Signals Analyzer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body{
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+         /* Navbar */
+         .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background-color: #2c3e50;
+            padding: 15px;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar ul li {
+            margin: 0 20px;
+        }
+
+        .navbar ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .navbar ul li a:hover {
+            color: #3498db;
+        }
+
+        /* Logo */
+        .navbar .logo img {
+            height: 40px;
+        }
+        
+        
+        .row{
+            width: 100%;
+        }
+        lord-icon{
+            float: right;
+        }
+      
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .alert-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .alert-icon {
+            width: 24px;
+            height: 24px;
+            fill: #ef4444;
+        }
+
+        .alert-title {
+            color: #991b1b;
+            font-weight: 600;
+            font-size: 18px;
+            margin: 0;
+        }
+
+        .alert-message {
+            color: #4b5563;
+            font-size: 16px;
+            margin: 0 0 20px 0;
+            line-height: 1.5;
+        }
+
+        .alert-button {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .alert-button:hover {
+            background-color: #dc2626;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .show {
+            display: flex;
+        }
+      
+        #hero{
+            width: 100%;
+            margin-top: 6rem;
+        }
+       
+        marquee{
+            color: #f8f9fa;
+            background-color: #065f46;
+            position: sticky;
+            top: 10px;
+        }
+        marquee a{
+            color: #f8f9fa;
+            text-decoration: none;
+        }
+        marquee button{
+            color: teal;
+            background-color: #f8f9fa;
+            border: 2px solid gray;
+            border-radius: 50px;
+        }
+        span{
+            color: #065f46;
+        }
+       
+
+       .container-fluid{
+        z-index: -1;
+       }
+        .signal-card {
+            transition: all 0.3s ease;
+        }
+        .signal-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .timer {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .result-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            padding: 10px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .broker-stats {
+            cursor: pointer;
+        }
+        .broker-stats:hover {
+            background-color: #f8f9fa;
+        }
+       
+    </style>
+</head>
+<body class="bg-light">
+  <div class="overlay" id="alertOverlay">
+        <div class="alert-container">
+            <div class="alert-header">
+                <svg class="alert-icon" viewBox="0 0 24 24">
+                    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"/>
+                </svg>
+                <h3 class="alert-title">Notification</h3>
+            </div>
+            <p class="alert-message">take proper analysis in respective broker. yield to site instructions for better performance</p>
+            <button class="alert-button" id="cancelButton">Cancel</button>
+        </div>
+    </div>
+  
+    <div class="navbar">
+        <div class="logo">
+            <a href="#" style="color: #f7f9fb;font-weight: bold;font-size: 3rem; text-decoration: none;">
+                Drip<span style="color: #667eea;">signal</span>
+            </a>
+        </div>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="signal.html">Signal</a></li>
+            <li><a href="admin-login.html">Admin only</a></li>
+        </ul>
+        <div class="moving-text">
+             <marquee behavior="" direction="" style="color:red; background-color:#fff">>>>>Do not refresh page not until active trading session end!!!!!>>>>>Do not refresh page not until active trading session end!!!!!
+                </marquee>
+        </div>
+    </div>
+  
+  
+    
+    <main id="hero">
+        <div class="container-fluid py-5">
+            <div class="row">
+                <!-- Left Sidebar - Broker Stats -->
+                <div class="col-md-3">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Broker Performance</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="brokerStatsList" class="list-group list-group-flush">
+                                <!-- Broker stats will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+            <div class="col-md-2">
+                <marquee behavior="" direction="">
+                    Get the best trade signal with us
+                </marquee>
+            </div>
+                <div class="col-md-7">
+                    <!-- Header -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h1 class="text-center mb-4">Tip<span>on</span> Trading Signals Analyzer</h1>
+                            <div class="card">
+                                <div class="card-body">
+                                  <i> for better Performance we recommend trading with Quotex investing platform, click button below to:</i>
+                                    <a href="https://broker-qx.pro/sign-up/?lid=1067836" style="text-decoration: none;">
+                                        <div class="button" style="border:1px solid gray; border-radius: 10px;text-align: center; background-color: #065f46; color: #fff;">
+                                             JOIN QOUTEX
+                                        </div>
+                                    </a>
+                                   <br><br><br>
+                                    <form id="analyzerForm" class="row g-3">
+                                        <div class="col-md-8">
+                                            <label for="brokerLink" class="form-label">Broker Link</label>
+                                            <input type="url" class="form-control" id="brokerLink" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="timeframe" class="form-label">Timeframe (minutes)</label>
+                                            <select class="form-select" id="timeframe" required>
+                                                <option value="3">3</option>
+                                                <option value="5">5</option>
+                                                <option value="7">7</option>
+                                                <option value="10">10</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">Analyze Signals</button>
+                                        </div>
+                                      <br><br><br>
+                                       
+                                      <marquee>Take note of trading currencies, before buying/selling...... if trading currency isn't found in the respective broker, consider such trade as void</marquee>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+
+                    <!-- Loading Indicator -->
+                    <div id="loadingIndicator" class="row mb-4 d-none">
+                        <div class="col text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Analyzing signals...</p>
+                        </div>
+                    </div>
+
+                    <!-- Error Alert -->
+                    <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+
+                    <!-- Active Signals Container -->
+                    <div id="signalsContainer" class="row g-4 mb-4"></div>
+
+                    <!-- Statistics Dashboard -->
+                     <h5>Track your success rate</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card stats-card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total Signals</h5>
+                                    <h2 id="totalSignals">0</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stats-card bg-success text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Successful</h5>
+                                    <h2 id="successfulSignals">0</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stats-card bg-danger text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Failed</h5>
+                                    <h2 id="failedSignals">0</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stats-card bg-info text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Success Rate</h5>
+                                    <h2 id="successRate">0%</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Historical Signals -->
+                    <div class="card mt-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Signal History</h5>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="signalAnalyzer.filterHistory('all')">All</button>
+                                <button class="btn btn-sm btn-outline-success" onclick="signalAnalyzer.filterHistory('successful')">Successful</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="signalAnalyzer.filterHistory('failed')">Failed</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date/Time</th>
+                                            <th>Broker</th>
+                                            <th>Asset</th>
+                                            <th>Type</th>
+                                            <th>Entry</th>
+                                            <th>Exit</th>
+                                            <th>Profit/Loss</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="historyTableBody">
+                                        <!-- Historical signals will be inserted here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+
+
+
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    <script src="script.js">
+    </script>
+</body>
+</html>
